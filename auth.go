@@ -16,7 +16,6 @@ type (
 		User     string
 		Password string
 	}
-
 	Accounts []Account
 	Pairs    []BasicAuthPair
 )

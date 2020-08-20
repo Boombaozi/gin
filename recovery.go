@@ -91,7 +91,6 @@ func Recovery() HandlerFunc {
 				c.Writer.WriteHeader(http.StatusInternalServerError)
 			}
 		}()
-
 		c.Next()
 	}
 }

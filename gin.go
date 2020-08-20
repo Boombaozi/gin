@@ -3,12 +3,13 @@ package gin
 import (
 	"encoding/json"
 	"encoding/xml"
-	"github.com/julienschmidt/httprouter"
 	"html/template"
 	"log"
 	"math"
 	"net/http"
 	"path"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 const (
@@ -16,10 +17,14 @@ const (
 )
 
 type (
+
+	//中间件函数 类型， 需传入上下文类型的指针
 	HandlerFunc func(*Context)
 
+	//将 string: interface{} 定义为 H
 	H map[string]interface{}
 
+	//定义错误信息
 	// Used internally to collect a error ocurred during a http request.
 	ErrorMsg struct {
 		Message string      `json:"msg"`
@@ -29,11 +34,14 @@ type (
 	// Context is the most important part of gin. It allows us to pass variables between middleware,
 	// manage the flow, validate the JSON of a request and render a JSON response for example.
 	Context struct {
-		Req      *http.Request
-		Writer   http.ResponseWriter
-		Keys     map[string]interface{}
-		Errors   []ErrorMsg
-		Params   httprouter.Params
+		Req *http.Request
+
+		Writer http.ResponseWriter
+		Keys   map[string]interface{}
+		//TODO : 收集多个错误信息的机制？？
+		Errors []ErrorMsg
+		Params httprouter.Params
+		//中间件
 		handlers []HandlerFunc
 		engine   *Engine
 		index    int8
@@ -42,15 +50,20 @@ type (
 	// Used internally to configure router, a RouterGroup is associated with a prefix
 	// and an array of handlers (middlewares)
 	RouterGroup struct {
+		//属于某个 路由分组的 中间件
 		Handlers []HandlerFunc
-		prefix   string
-		parent   *RouterGroup
-		engine   *Engine
+		// 前缀
+		prefix string
+		//父路由
+		parent *RouterGroup
+		engine *Engine
 	}
 
 	// Represents the web framework, it wrappers the blazing fast httprouter multiplexer and a list of global middlewares.
 	Engine struct {
 		*RouterGroup
+		//TODO 确认handers的作用
+		//
 		handlers404   []HandlerFunc
 		router        *httprouter.Router
 		HTMLTemplates *template.Template
@@ -83,15 +96,19 @@ func (engine *Engine) NotFound404(handlers ...HandlerFunc) {
 	engine.handlers404 = handlers
 }
 
+// 404 处理方法，传给router
+//如果用户未定义 404 中间件，则返回默认的404错误。 如果有则 执行全部中间件
 func (engine *Engine) handle404(w http.ResponseWriter, req *http.Request) {
+
+	//使分组路由 与engine 的中间件 放入一起， 放在上下文中
 	handlers := engine.combineHandlers(engine.handlers404)
 	c := engine.createContext(w, req, nil, handlers)
+
 	if engine.handlers404 == nil {
 		http.NotFound(c.Writer, c.Req)
 	} else {
 		c.Writer.WriteHeader(404)
 	}
-
 	c.Next()
 }
 
@@ -115,6 +132,7 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (engine *Engine) Run(addr string) {
+	//TODOL: 确认此处传入engine的作用
 	http.ListenAndServe(addr, engine)
 }
 
@@ -122,6 +140,7 @@ func (engine *Engine) Run(addr string) {
 /********** ROUTES GROUPING *********/
 /************************************/
 
+// 创建上下文环境，用于中间件及 业务代码
 func (group *RouterGroup) createContext(w http.ResponseWriter, req *http.Request, params httprouter.Params, handlers []HandlerFunc) *Context {
 	return &Context{
 		Writer:   w,
@@ -140,6 +159,7 @@ func (group *RouterGroup) Use(middlewares ...HandlerFunc) {
 
 // Greates a new router group. You should create add all the routes that share that have common middlwares or same path prefix.
 // For example, all the routes that use a common middlware for authorization could be grouped.
+//路由分组可按 前缀 分组，或者按使用 同一个 中间件（如授权） 进行 分组
 func (group *RouterGroup) Group(component string, handlers ...HandlerFunc) *RouterGroup {
 	prefix := path.Join(group.prefix, component)
 	return &RouterGroup{
@@ -160,8 +180,12 @@ func (group *RouterGroup) Group(component string, handlers ...HandlerFunc) *Rout
 // This function is intended for bulk loading and to allow the usage of less
 // frequently used, non-standardized or custom methods (e.g. for internal
 // communication with a proxy).
+
+// 真正处理 业务的 最终 handles
+// 将所有  handle 交给 router.handle 去 执行
 func (group *RouterGroup) Handle(method, p string, handlers []HandlerFunc) {
 	p = path.Join(group.prefix, p)
+	//将路由组的 中间件 与 handles 放到一起
 	handlers = group.combineHandlers(handlers)
 	group.engine.router.Handle(method, p, func(w http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		group.createContext(w, req, params, handlers).Next()
@@ -219,6 +243,8 @@ func (c *Context) Next() {
 // Forces the system to do not continue calling the pending handlers.
 // For example, the first handler checks if the request is authorized. If it's not, context.Abort(401) should be called.
 // The rest of pending handlers would never be called for that request.
+
+//中断后续中间件的执行，如权限校验未通过等情况
 func (c *Context) Abort(code int) {
 	c.Writer.WriteHeader(code)
 	c.index = AbortIndex
@@ -299,6 +325,8 @@ func (c *Context) ParseBody(item interface{}) error {
 
 // Serializes the given struct as a JSON into the response body in a fast and efficient way.
 // It also sets the Content-Type as "application/json"
+
+// 序列化 json  ,如果失败返回500
 func (c *Context) JSON(code int, obj interface{}) {
 	if code >= 0 {
 		c.Writer.WriteHeader(code)
