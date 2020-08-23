@@ -16,6 +16,7 @@ var (
 	slash     = []byte("/")
 )
 
+//TODO 确认 stack方法的作用
 // stack returns a nicely formated stack frame, skipping skip frames
 func stack(skip int) []byte {
 	buf := new(bytes.Buffer) // the returned data

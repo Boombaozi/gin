@@ -6,6 +6,9 @@ import (
 	"strings"
 )
 
+// 解析请求 body 为 json 后 进行校验
+//TODO: 确认此方法具体作用
+
 func Validate(c *Context, obj interface{}) error {
 
 	var err error

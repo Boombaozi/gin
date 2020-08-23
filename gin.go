@@ -12,6 +12,24 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+//gin 提供了 路由分组，及中间件 两个特性，而 中间件是 挂载在路由分组上的，也就是 可以灵活的 将 路由组 与中间件进行组合
+
+//BUG gin.go 总结
+//此文件定义了 gin核心的一些结构题 及核心的 方法
+//1.定义了 中间件的形式，即 传入一个上下文的 func
+//2.定义了 Context ， 包含了  req, 输出流，handler[] ,engine , 及中间件执行位置的index
+//3.engine,
+//4. routergroup 路由分组
+
+//gin 启动流程
+//1.  gin.new() 初始化一个空的 engine 结构体
+//2.  使用 gin.Default()  会 调用 gin.use()  放入两个中间件(错误捕获，及 日志) 到当前 路由组
+//3。 r.Get 等方法，将 路由 及 handler 添加到 router 中, 此 handler内容为 创建上下文及执行下一个 handler
+
+//gin 请求处理流程
+//1. router 进行路由匹配，调用 func
+//2. 此func 创建上下文 并调用第一个中间件
+
 const (
 	AbortIndex = math.MaxInt8 / 2
 )
@@ -39,6 +57,7 @@ type (
 		Writer http.ResponseWriter
 		Keys   map[string]interface{}
 		//TODO : 收集多个错误信息的机制？？
+		//此处会收集所有的中间件 放入的错误
 		Errors []ErrorMsg
 		Params httprouter.Params
 		//中间件
@@ -62,7 +81,7 @@ type (
 	// Represents the web framework, it wrappers the blazing fast httprouter multiplexer and a list of global middlewares.
 	Engine struct {
 		*RouterGroup
-		//TODO 确认handers的作用
+		//TODO 确认handers404的作用
 		//
 		handlers404   []HandlerFunc
 		router        *httprouter.Router
@@ -76,6 +95,7 @@ func New() *Engine {
 	engine := &Engine{}
 	engine.RouterGroup = &RouterGroup{nil, "", nil, engine}
 	engine.router = httprouter.New()
+	//指定router的 404 处理方法
 	engine.router.NotFound = engine.handle404
 	return engine
 }
@@ -91,6 +111,7 @@ func (engine *Engine) LoadHTMLTemplates(pattern string) {
 	engine.HTMLTemplates = template.Must(template.ParseGlob(pattern))
 }
 
+//用户自己指定的 404 handers
 // Adds handlers for NotFound. It return a 404 code by default.
 func (engine *Engine) NotFound404(handlers ...HandlerFunc) {
 	engine.handlers404 = handlers
@@ -100,8 +121,10 @@ func (engine *Engine) NotFound404(handlers ...HandlerFunc) {
 //如果用户未定义 404 中间件，则返回默认的404错误。 如果有则 执行全部中间件
 func (engine *Engine) handle404(w http.ResponseWriter, req *http.Request) {
 
-	//使分组路由 与engine 的中间件 放入一起， 放在上下文中
+	//使分组路由 与 用户指定的404 handers放入一起， 放在上下文中
 	handlers := engine.combineHandlers(engine.handlers404)
+
+	//创建上下文
 	c := engine.createContext(w, req, nil, handlers)
 
 	if engine.handlers404 == nil {
@@ -132,7 +155,7 @@ func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (engine *Engine) Run(addr string) {
-	//TODOL: 确认此处传入engine的作用
+	//TODO : 确认此处传入engine的作用
 	http.ListenAndServe(addr, engine)
 }
 
@@ -160,6 +183,7 @@ func (group *RouterGroup) Use(middlewares ...HandlerFunc) {
 // Greates a new router group. You should create add all the routes that share that have common middlwares or same path prefix.
 // For example, all the routes that use a common middlware for authorization could be grouped.
 //路由分组可按 前缀 分组，或者按使用 同一个 中间件（如授权） 进行 分组
+// 给当前 路由分组 增加子路由分组
 func (group *RouterGroup) Group(component string, handlers ...HandlerFunc) *RouterGroup {
 	prefix := path.Join(group.prefix, component)
 	return &RouterGroup{
@@ -184,6 +208,7 @@ func (group *RouterGroup) Group(component string, handlers ...HandlerFunc) *Rout
 // 真正处理 业务的 最终 handles
 // 将所有  handle 交给 router.handle 去 执行
 func (group *RouterGroup) Handle(method, p string, handlers []HandlerFunc) {
+	//拼接出 最终的 url
 	p = path.Join(group.prefix, p)
 	//将路由组的 中间件 与 handles 放到一起
 	handlers = group.combineHandlers(handlers)
@@ -326,7 +351,7 @@ func (c *Context) ParseBody(item interface{}) error {
 // Serializes the given struct as a JSON into the response body in a fast and efficient way.
 // It also sets the Content-Type as "application/json"
 
-// 序列化 json  ,如果失败返回500
+// 序列化 json  ,
 func (c *Context) JSON(code int, obj interface{}) {
 	if code >= 0 {
 		c.Writer.WriteHeader(code)
