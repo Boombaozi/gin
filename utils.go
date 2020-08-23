@@ -8,7 +8,7 @@ type H map[string]interface{}
 
 // Allows type H to be used with xml.Marshal
 func (h H) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
-	start.Name = xml.Name{
+	start.Name = xml.Name{         
 		Space: "",
 		Local: "map",
 	}

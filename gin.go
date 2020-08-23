@@ -1,14 +1,21 @@
 package gin
 
 import (
-	"github.com/gin-gonic/gin/render"
-	"github.com/julienschmidt/httprouter"
 	"html/template"
 	"math"
 	"net/http"
 	"path"
 	"sync"
+
+	"github.com/gin-gonic/gin/render"
+	"github.com/julienschmidt/httprouter"
 )
+
+//gin.go 0.3 相较 0.1的变化：
+//1.context 移入单独的文件中
+//TODO 分析此处缓存对性能的影响
+//2. engine 增加 cache sync.Pool
+//3.增加 Static处理，包装了下 http.FileServer 完成静态文件的处理
 
 const (
 	AbortIndex   = math.MaxInt8 / 2
