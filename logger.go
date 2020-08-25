@@ -16,12 +16,14 @@ import (
 
 type consoleColorModeValue int
 
+//颜色开关
 const (
 	autoColor consoleColorModeValue = iota
 	disableColor
 	forceColor
 )
 
+//日志颜色定义
 const (
 	green   = "\033[97;42m"
 	white   = "\033[90;47m"
@@ -35,6 +37,7 @@ const (
 
 var consoleColorMode = autoColor
 
+//LoggerConfig 日志配置: 包含3个子结构,1.日志形式, 2.输出位置,3.跳过的路由
 // LoggerConfig defines the config for Logger middleware.
 type LoggerConfig struct {
 	// Optional. Default value is gin.defaultLogFormatter
@@ -78,6 +81,7 @@ type LogFormatterParams struct {
 	Keys map[string]interface{}
 }
 
+//根据 status Code 返回颜色
 // StatusCodeColor is the ANSI color for appropriately logging http status code to a terminal.
 func (p *LogFormatterParams) StatusCodeColor() string {
 	code := p.StatusCode
@@ -128,9 +132,12 @@ func (p *LogFormatterParams) IsOutputColor() bool {
 	return consoleColorMode == forceColor || (consoleColorMode == autoColor && p.isTerm)
 }
 
+// 默认的 日志格式化器, 输入为 一些默认的参数 ,输出为string,可自定义这些参数的输出方式
 // defaultLogFormatter is the default log format function Logger middleware uses.
 var defaultLogFormatter = func(param LogFormatterParams) string {
 	var statusColor, methodColor, resetColor string
+
+	//如果显示颜色,则按照规则获取颜色
 	if param.IsOutputColor() {
 		statusColor = param.StatusCodeColor()
 		methodColor = param.MethodColor()
@@ -178,12 +185,14 @@ func ErrorLoggerT(typ ErrorType) HandlerFunc {
 	}
 }
 
+//用于返回默认的日志中间件
 // Logger instances a Logger middleware that will write the logs to gin.DefaultWriter.
 // By default gin.DefaultWriter = os.Stdout.
 func Logger() HandlerFunc {
 	return LoggerWithConfig(LoggerConfig{})
 }
 
+//可以传入自定义的 日志格式化器来  返回日志中间件
 // LoggerWithFormatter instance a Logger middleware with the specified log format function.
 func LoggerWithFormatter(f LogFormatter) HandlerFunc {
 	return LoggerWithConfig(LoggerConfig{
@@ -191,6 +200,7 @@ func LoggerWithFormatter(f LogFormatter) HandlerFunc {
 	})
 }
 
+//可以配置 特殊的输出位置,及不输出日志的路由 ,的日志中间件
 // LoggerWithWriter instance a Logger middleware with the specified writer buffer.
 // Example: os.Stdout, a file opened in write mode, a socket...
 func LoggerWithWriter(out io.Writer, notlogged ...string) HandlerFunc {
@@ -200,8 +210,11 @@ func LoggerWithWriter(out io.Writer, notlogged ...string) HandlerFunc {
 	})
 }
 
+//通过配置 生成一个 日志中间件
 // LoggerWithConfig instance a Logger middleware with config.
 func LoggerWithConfig(conf LoggerConfig) HandlerFunc {
+
+	//如没有自定义,使用默认的
 	formatter := conf.Formatter
 	if formatter == nil {
 		formatter = defaultLogFormatter

@@ -11,6 +11,9 @@ import (
 	"github.com/gin-gonic/gin/binding"
 )
 
+//此文件用于定义环境mode
+//也可通过 export GIN_MODE = debug ,或者 gin.SetMode()进行修改
+
 // EnvGinMode indicates environment name for gin mode.
 const EnvGinMode = "GIN_MODE"
 
