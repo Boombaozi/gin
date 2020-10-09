@@ -24,6 +24,11 @@ import (
 	"github.com/gin-gonic/gin/render"
 )
 
+//上下文创建的时机
+//1.服务接受到请求
+//2.路由组件匹配到请求,执行 hander函数 (  实际整个请求处理都在这个函数中完成, gin中间件 均在这个函数中执行完毕    )
+//3.创建上下文,执行第一个中间件
+
 // Content-Type MIME of the most common data formats.
 const (
 	MIMEJSON              = binding.MIMEJSON
@@ -46,11 +51,14 @@ type Context struct {
 	Request   *http.Request
 	Writer    ResponseWriter
 
-	Params   Params
+	Params Params
+	//中间件数组
 	handlers HandlersChain
+	//记录执行到的位置
 	index    int8
 	fullPath string
 
+	//gin 初始化时的一些数据,如路由
 	engine *Engine
 
 	// This mutex protect Keys map
@@ -158,7 +166,9 @@ func (c *Context) FullPath() string {
 func (c *Context) Next() {
 	c.index++
 	for c.index < int8(len(c.handlers)) {
+		//执行下一个中间件
 		c.handlers[c.index](c)
+		//执行下个中间件
 		c.index++
 	}
 }
@@ -214,6 +224,7 @@ func (c *Context) Error(err error) *Error {
 		panic("err is nil")
 	}
 
+	//类型断言
 	parsedError, ok := err.(*Error)
 	if !ok {
 		parsedError = &Error{

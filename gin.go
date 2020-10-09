@@ -146,6 +146,7 @@ func New() *Engine {
 		delims:                 render.Delims{Left: "{{", Right: "}}"},
 		secureJsonPrefix:       "while(1);",
 	}
+	//让所有路由分组均可访问到 gin初始化时的相关信息
 	engine.RouterGroup.engine = engine
 	engine.pool.New = func() interface{} {
 		return engine.allocateContext()
@@ -161,6 +162,7 @@ func Default() *Engine {
 	return engine
 }
 
+//  TODO 调查其作用
 func (engine *Engine) allocateContext() *Context {
 	return &Context{engine: engine}
 }
@@ -219,12 +221,14 @@ func (engine *Engine) SetFuncMap(funcMap template.FuncMap) {
 	engine.FuncMap = funcMap
 }
 
+// 使用自定义的 handers处理404错误
 // NoRoute adds handlers for NoRoute. It return a 404 code by default.
 func (engine *Engine) NoRoute(handlers ...HandlerFunc) {
 	engine.noRoute = handlers
 	engine.rebuild404Handlers()
 }
 
+//使用自定义的 handers 处理 405错误
 // NoMethod sets the handlers called when... TODO.
 func (engine *Engine) NoMethod(handlers ...HandlerFunc) {
 	engine.noMethod = handlers

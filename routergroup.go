@@ -207,12 +207,18 @@ func (group *RouterGroup) createStaticHandler(relativePath string, fs http.FileS
 	}
 }
 
+//  将 中间件 数据  添加到某个路由分组上
 func (group *RouterGroup) combineHandlers(handlers HandlersChain) HandlersChain {
+	//合并后  总的中间件个数
 	finalSize := len(group.Handlers) + len(handlers)
+	//检查中间件个数
 	if finalSize >= int(abortIndex) {
 		panic("too many handlers")
 	}
+	//创建一个新的切片用于存放 中间件
 	mergedHandlers := make(HandlersChain, finalSize)
+
+	//复制   路由本身的中间件,及添加的中间件
 	copy(mergedHandlers, group.Handlers)
 	copy(mergedHandlers[len(group.Handlers):], handlers)
 	return mergedHandlers

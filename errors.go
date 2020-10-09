@@ -37,6 +37,7 @@ type Error struct {
 	Meta interface{}
 }
 
+//定义Error 数组,存放多个Error
 type errorMsgs []*Error
 
 var _ error = &Error{}
